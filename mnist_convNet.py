@@ -137,10 +137,6 @@ def main():
     #load mnist and reshape
     TRAIN_DIR = "MNIST_data"
     mnist = read_data_sets(TRAIN_DIR, one_hot = True)
-    
-    imagesTest = mnist.test.images
-    imagesTest = tf.reshape(imagesTest, [-1, IMAGE_WIDTH, IMAGE_HEIGHT, -1])
-    labelsTest = mnist.test.labels
  
     #Architecture (CONV2D->RELU->POOL)^3->FC->softmax
     weightsShape = {
@@ -163,7 +159,7 @@ def main():
         'softmax' : [10],
     }
 
-    MAX_TRAINING_STEP = 2000
+    MAX_TRAINING_STEP = 3000
     BATCH_SIZE = 100
     
     #Placeholders for data
@@ -171,7 +167,7 @@ def main():
     yData = tf.placeholder(tf.float32, [None, NUMBER_CLASSES])
     
     #Compute the model with the placeholders
-    train_step, loss, logits = training(0.01, xData, yData, weightsShape, biasesShape, NUMBER_CLASSES)
+    train_step, loss, logits = training(0.5, xData, yData, weightsShape, biasesShape, NUMBER_CLASSES)
     
     
     #Tensorflow session
@@ -189,12 +185,22 @@ def main():
             print('%d loss %f' % (i, currentLoss))
         lossValues.append(currentLoss)
     
-    #Evaluate the accuracy
-    yPrediction = tf.softmax(logits)
-    accuraccy = np.reduce_mean(tf.cast(tf.equal(tf.argmax(yData, axis=1), tf.argmax(yPrediction, axis=1)), float32))
+    yPrediction = tf.nn.softmax(logits)
+    correctPrediction = tf.equal(tf.argmax(yData, axis=1), tf.argmax(yPrediction, axis=1)) 
+    accuracy = tf.reduce_mean(tf.cast(correctPrediction, tf.float32))
+	
+    #Evaluate the accuracy by batches to avoid memory problems
+    finalAccuracy = 0.0
+    for i in range(100):
+        xBatch, yBatch  = mnist.test.next_batch(BATCH_SIZE)
+        finalAccuracy += BATCH_SIZE*sess.run(accuracy, {xData: xBatch, yData: yBatch})
+		
+    finalAccuracy = finalAccuracy/10000.0
+    print("Accuracy %f ", finalAccuracy)
 
-    print("Accuracy %f ", sess.run(accuracy, {xData:imagesTest, yData:labelsTest}))
-
+    plt.plot(lossValues)
+    plt.show()
+	
 if __name__ == "__main__":
     main()
 
